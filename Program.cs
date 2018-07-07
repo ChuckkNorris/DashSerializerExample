@@ -2,54 +2,39 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using System.Web;
 
-namespace DashSerializer
-{
-    class Program
-    {
-      
-        static void Main(string[] args)
-        {
-            // URL encode all JSON string properties
-            string encodedDashDescription = UrlEncodeJsonStringProperties(TestData.DashDescriptionJson);
-            // Log dash description with URL encoded strings
-            Console.WriteLine(encodedDashDescription);
-            // URL decode all JSON string properties
-            string decodedDashDescription = UrlEncodeJsonStringProperties(encodedDashDescription, shouldDecode: true);
-            Console.WriteLine(decodedDashDescription);
+namespace DashSerializer {
+    class Program {
+
+        static void Main(string[] args) {
+            string inputFilePath = "./ExampleInput";
+            string outputFilePath = "./ExampleOutput";
+            if (args.Length > 0) inputFilePath = args[0];
+            if (args.Length > 1) outputFilePath = args[1];
+            UrlEncodeAndDecodeJsonFileAsync(inputFilePath, outputFilePath).GetAwaiter().GetResult();
             Console.ReadKey();
         }
 
-        private static string UrlEncodeJsonStringProperties(string json, bool shouldDecode = false) {
-            dynamic dashDescription = JsonConvert.DeserializeObject<dynamic>(json);
-            // Iterate over all root properties
-            foreach (JProperty jProp in dashDescription) {
-                EncodeStringProperties(jProp, shouldDecode);
-            }
-            return JsonConvert.SerializeObject(dashDescription);
+        private static async Task UrlEncodeAndDecodeJsonFileAsync(string inputFileName, string outputFileName) {
+            string inputJsonFilePath = $"{inputFileName}.json";
+            string outputEncodedJsonFilePath = $"{outputFileName}-encoded.json";
+            string outputDecodedJsonFilePath = $"{outputFileName}-decoded.json";
+
+            Console.WriteLine($"Encoding JSON File... {inputJsonFilePath}");
+            string inputFileJson = await FileHelpers.ReadFileAsync(inputJsonFilePath);
+            string encodedJson = new JsonEditor(inputFileJson)?.UrlEncodeStrings();
+            await FileHelpers.WriteFileAsync(outputEncodedJsonFilePath, encodedJson, shouldDelete: true);
+            Console.WriteLine($"Successfully Encoded File to here... {outputEncodedJsonFilePath}");
+
+            Console.WriteLine($"Decoding JSON File... {outputEncodedJsonFilePath}");
+            string encodedJsonFromFile = await FileHelpers.ReadFileAsync(outputEncodedJsonFilePath);
+            string decodedJson = new JsonEditor(inputFileJson)?.UrlDecodeStrings();
+            await FileHelpers.WriteFileAsync(outputDecodedJsonFilePath, decodedJson, shouldDelete: true);
+            Console.WriteLine($"Successfully Decoded File to here... {outputDecodedJsonFilePath}");
         }
 
-        private static void EncodeStringProperties(JProperty jProp, bool shouldDecode) {
-            if (jProp.HasValues && jProp.Value.Type == JTokenType.String) {
-                // Check if property value is a string and encode it
-                jProp.Value = shouldDecode ? HttpUtility.UrlDecode(jProp.Value.ToString()) : HttpUtility.UrlEncode(jProp.Value.ToString());
-            } else if (jProp.HasValues) {
-                // Iterate all child properties
-                EncodeStringChildProperties(jProp, shouldDecode);
-            }
-        }
-
-        private static void EncodeStringChildProperties(JToken jtoken, bool shouldDecode) {
-            foreach (JToken childJProp in jtoken.Children()) {
-                if (childJProp is JProperty) {
-                    // If token is a JSON property, check if it's a string and encode it
-                    EncodeStringProperties(childJProp as JProperty, shouldDecode);
-                } else {
-                    // Continue iterating through the children if it's not a property
-                    EncodeStringChildProperties(childJProp, shouldDecode);
-                }
-            }
-        }
     }
 }
