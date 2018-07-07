@@ -7,6 +7,7 @@ Example of iterating all JSON properties and URL encoding each one.
    * `dotnet restore`
 3. Run the app
    * `dotnet run`
+   * Optionally, pass input/output file paths: `dotnet run "./inputJsonFile" "./neato/output-json-file"`
 
 ## Example JSON Input
 ```
